@@ -194,6 +194,84 @@ class BookingManagerTest {
         );
     }
     @Test
+    void shouldRejectNullTransactionIdWithoutSavingBooking()
+            throws Exception {
+
+        // Arrange
+        BookingRequest request = new BookingRequest(
+                "C101",
+                "E201",
+                2,
+                2500
+        );
+
+        when(eventRepository.isSoldOut("E201"))
+                .thenReturn(false);
+
+        when(paymentGateway.processPayment(5000))
+                .thenReturn(null);
+
+        // Act & Assert
+        assertThrows(
+                PaymentFailedException.class,
+                () -> bookingManager.book(request)
+        );
+
+        // Verify
+        verify(eventRepository, times(1))
+                .isSoldOut("E201");
+
+        verify(paymentGateway, times(1))
+                .processPayment(5000);
+
+        verifyNoInteractions(notificationService);
+
+        verifyNoMoreInteractions(
+                paymentGateway,
+                eventRepository
+        );
+    }
+
+    @Test
+    void shouldRejectBlankTransactionIdWithoutSavingBooking()
+            throws Exception {
+
+        // Arrange
+        BookingRequest request = new BookingRequest(
+                "C101",
+                "E201",
+                2,
+                2500
+        );
+
+        when(eventRepository.isSoldOut("E201"))
+                .thenReturn(false);
+
+        when(paymentGateway.processPayment(5000))
+                .thenReturn("   ");
+
+        // Act & Assert
+        assertThrows(
+                PaymentFailedException.class,
+                () -> bookingManager.book(request)
+        );
+
+        // Verify
+        verify(eventRepository, times(1))
+                .isSoldOut("E201");
+
+        verify(paymentGateway, times(1))
+                .processPayment(5000);
+
+        verifyNoInteractions(notificationService);
+
+        verifyNoMoreInteractions(
+                paymentGateway,
+                eventRepository
+        );
+    }
+
+    @Test
 void shouldRejectNullDependencies() {
 
     assertThrows(
