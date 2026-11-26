@@ -11,9 +11,14 @@ public class BookingManager {
             INotificationService notificationService,
             IEventRepository eventRepository) {
 
-        this.paymentGateway = paymentGateway;
-        this.notificationService = notificationService;
-        this.eventRepository = eventRepository;
+        this.paymentGateway = java.util.Objects.requireNonNull(
+        paymentGateway, "Payment gateway cannot be null");
+
+this.notificationService = java.util.Objects.requireNonNull(
+        notificationService, "Notification service cannot be null");
+
+this.eventRepository = java.util.Objects.requireNonNull(
+        eventRepository, "Event repository cannot be null");
     }
 
     public BookingResult book(BookingRequest request)
