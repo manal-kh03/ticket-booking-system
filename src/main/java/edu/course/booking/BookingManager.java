@@ -32,13 +32,7 @@ public class BookingManager {
                 request.getTicketQuantity(),
                 request.getPricePerTicketInCents());
 
-        String transactionId =
-                paymentGateway.processPayment(totalAmountInCents);
-
-        if (transactionId == null || transactionId.isBlank()) {
-            throw new PaymentFailedException(
-                    "Payment gateway returned an invalid transaction ID");
-        }
+        String transactionId = processPayment(totalAmountInCents);
 
         Booking booking = new Booking(request, transactionId);
 
@@ -47,5 +41,19 @@ public class BookingManager {
         notificationService.sendConfirmation(booking);
 
         return BookingResult.success(transactionId);
+    }
+
+    private String processPayment(int amountInCents)
+            throws PaymentFailedException {
+
+        String transactionId =
+                paymentGateway.processPayment(amountInCents);
+
+        if (transactionId == null || transactionId.isBlank()) {
+            throw new PaymentFailedException(
+                    "Payment gateway returned an invalid transaction ID");
+        }
+
+        return transactionId;
     }
 }
