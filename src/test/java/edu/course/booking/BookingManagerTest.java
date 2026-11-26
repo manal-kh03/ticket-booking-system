@@ -99,4 +99,37 @@ class BookingManagerTest {
                 eventRepository
         );
     }
+    
+@Test
+void shouldReturnSoldOutWithoutProcessingPaymentOrSavingBooking()
+        throws PaymentFailedException {
+
+    // Arrange
+    BookingRequest request = new BookingRequest(
+            "C101",
+            "E201",
+            2,
+            2500
+    );
+
+    when(eventRepository.isSoldOut("E201")).thenReturn(true);
+
+    // Act
+    BookingResult result = bookingManager.book(request);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals(BookingResult.Status.SOLD_OUT, result.getStatus());
+    assertEquals(false, result.isSuccessful());
+    assertEquals(null, result.getTransactionId());
+
+    verify(eventRepository, times(1)).isSoldOut("E201");
+
+    verifyNoInteractions(
+            paymentGateway,
+            notificationService
+    );
+
+    verifyNoMoreInteractions(eventRepository);
+}
 }
