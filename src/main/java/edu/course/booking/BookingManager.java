@@ -1,5 +1,7 @@
 package edu.course.booking;
 
+import static java.util.Objects.requireNonNull;
+
 public class BookingManager {
 
     private final IPaymentGateway paymentGateway;
@@ -11,14 +13,14 @@ public class BookingManager {
             INotificationService notificationService,
             IEventRepository eventRepository) {
 
-        this.paymentGateway = java.util.Objects.requireNonNull(
-        paymentGateway, "Payment gateway cannot be null");
+        this.paymentGateway = requireNonNull(
+                paymentGateway, "Payment gateway cannot be null");
 
-this.notificationService = java.util.Objects.requireNonNull(
-        notificationService, "Notification service cannot be null");
+        this.notificationService = requireNonNull(
+                notificationService, "Notification service cannot be null");
 
-this.eventRepository = java.util.Objects.requireNonNull(
-        eventRepository, "Event repository cannot be null");
+        this.eventRepository = requireNonNull(
+                eventRepository, "Event repository cannot be null");
     }
 
     public BookingResult book(BookingRequest request)
