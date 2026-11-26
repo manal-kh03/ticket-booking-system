@@ -81,8 +81,19 @@ class BookingManagerTest {
         assertEquals(3, savedBooking.getTicketQuantity());
         assertEquals(7500, savedBooking.getTotalAmountInCents());
         assertEquals("TXN-123", savedBooking.getTransactionId());
-
         verifyNoMoreInteractions(
+                paymentGateway,
+                notificationService,
+                eventRepository
+        );
+    }
+    @Test
+    void shouldRejectNullRequestWithoutCallingDependencies() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingManager.book(null)
+        );
+        verifyNoInteractions(
                 paymentGateway,
                 notificationService,
                 eventRepository
