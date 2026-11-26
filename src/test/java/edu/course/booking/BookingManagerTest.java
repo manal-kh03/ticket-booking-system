@@ -37,6 +37,7 @@ class BookingManagerTest {
     @Test
     void shouldCompleteBookingSuccessfully() throws Exception {
 
+        // Arrange
         BookingRequest request = new BookingRequest(
                 "C101",
                 "E201",
@@ -50,13 +51,17 @@ class BookingManagerTest {
         when(paymentGateway.processPayment(7500))
                 .thenReturn("TXN-123");
 
+        // Act
         BookingResult result = bookingManager.book(request);
 
+        // Assert
         assertNotNull(result);
+
         assertEquals(
                 BookingResult.Status.SUCCESS,
                 result.getStatus()
         );
+
         assertEquals("TXN-123", result.getTransactionId());
 
         verify(eventRepository, times(1))
@@ -71,9 +76,6 @@ class BookingManagerTest {
         verify(eventRepository, times(1))
                 .saveBooking(bookingCaptor.capture());
 
-        verify(notificationService, times(1))
-                .sendConfirmation(any(Booking.class));
-
         Booking savedBooking = bookingCaptor.getValue();
 
         assertEquals("C101", savedBooking.getCustomerId());
@@ -81,55 +83,144 @@ class BookingManagerTest {
         assertEquals(3, savedBooking.getTicketQuantity());
         assertEquals(7500, savedBooking.getTotalAmountInCents());
         assertEquals("TXN-123", savedBooking.getTransactionId());
+
+        verify(notificationService, times(1))
+                .sendConfirmation(savedBooking);
+
         verifyNoMoreInteractions(
                 paymentGateway,
                 notificationService,
                 eventRepository
         );
     }
+
     @Test
     void shouldRejectNullRequestWithoutCallingDependencies() {
+
+        // Act & Assert
         assertThrows(
                 IllegalArgumentException.class,
                 () -> bookingManager.book(null)
         );
+
         verifyNoInteractions(
                 paymentGateway,
                 notificationService,
                 eventRepository
         );
     }
-    
-@Test
-void shouldReturnSoldOutWithoutProcessingPaymentOrSavingBooking()
-        throws PaymentFailedException {
 
-    // Arrange
-    BookingRequest request = new BookingRequest(
-            "C101",
-            "E201",
-            2,
-            2500
+    @Test
+    void shouldReturnSoldOutWithoutProcessingPaymentOrSavingBooking()
+            throws PaymentFailedException {
+
+        // Arrange
+        BookingRequest request = new BookingRequest(
+                "C101",
+                "E201",
+                2,
+                2500
+        );
+
+        when(eventRepository.isSoldOut("E201"))
+                .thenReturn(true);
+
+        // Act
+        BookingResult result = bookingManager.book(request);
+
+        // Assert
+        assertNotNull(result);
+
+        assertEquals(
+                BookingResult.Status.SOLD_OUT,
+                result.getStatus()
+        );
+
+        assertFalse(result.isSuccessful());
+        assertNull(result.getTransactionId());
+
+        verify(eventRepository, times(1))
+                .isSoldOut("E201");
+
+        verifyNoInteractions(
+                paymentGateway,
+                notificationService
+        );
+
+        verifyNoMoreInteractions(eventRepository);
+    }
+
+    @Test
+    void shouldNotSaveBookingOrSendNotificationWhenPaymentFails()
+            throws PaymentFailedException {
+
+        // Arrange
+        BookingRequest request = new BookingRequest(
+                "C101",
+                "E201",
+                2,
+                2500
+        );
+
+        when(eventRepository.isSoldOut("E201"))
+                .thenReturn(false);
+
+        when(paymentGateway.processPayment(5000))
+                .thenThrow(
+                        new PaymentFailedException("Payment declined")
+                );
+
+        // Act & Assert
+        assertThrows(
+                PaymentFailedException.class,
+                () -> bookingManager.book(request)
+        );
+
+        // Verify
+        verify(eventRepository, times(1))
+                .isSoldOut("E201");
+
+        verify(paymentGateway, times(1))
+                .processPayment(5000);
+
+        verify(eventRepository, never())
+                .saveBooking(any(Booking.class));
+
+        verifyNoInteractions(notificationService);
+
+        verifyNoMoreInteractions(
+                paymentGateway,
+                eventRepository
+        );
+    }
+    @Test
+void shouldRejectNullDependencies() {
+
+    assertThrows(
+            NullPointerException.class,
+            () -> new BookingManager(
+                    null,
+                    notificationService,
+                    eventRepository
+            )
     );
 
-    when(eventRepository.isSoldOut("E201")).thenReturn(true);
-
-    // Act
-    BookingResult result = bookingManager.book(request);
-
-    // Assert
-    assertNotNull(result);
-    assertEquals(BookingResult.Status.SOLD_OUT, result.getStatus());
-    assertEquals(false, result.isSuccessful());
-    assertEquals(null, result.getTransactionId());
-
-    verify(eventRepository, times(1)).isSoldOut("E201");
-
-    verifyNoInteractions(
-            paymentGateway,
-            notificationService
+    assertThrows(
+            NullPointerException.class,
+            () -> new BookingManager(
+                    paymentGateway,
+                    null,
+                    eventRepository
+            )
     );
 
-    verifyNoMoreInteractions(eventRepository);
+    assertThrows(
+            NullPointerException.class,
+            () -> new BookingManager(
+                    paymentGateway,
+                    notificationService,
+                    null
+            )
+    );
 }
 }
